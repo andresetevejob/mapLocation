@@ -1,8 +1,11 @@
 package com.example.myapplication
 
 import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.beust.klaxon.*
+import com.google.android.gms.common.util.CollectionUtils
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -11,8 +14,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
-import com.beust.klaxon.*
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,29 +34,35 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        /**mMap = googleMap;
-        val chatelet = LatLng(48.8587782, 2.3474106)
-        val creteil = LatLng(48.7771486, 2.4530731)
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng((48.862725), 2.287592) , 10f))
-        mMap.addMarker(MarkerOptions().position(chatelet).title("Chatelet"))
-        mMap.addMarker(MarkerOptions().position(creteil).title("Creteil"))**/
         mMap = googleMap
         // declare bounds object to fit whole route in screen
         val LatLongB = LatLngBounds.Builder()
         // Add markers
-        val sydney = LatLng(-34.0, 151.0)
-        val opera = LatLng(-33.9320447,151.1597271)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.addMarker(MarkerOptions().position(opera).title("Opera House"))
+        val chatelet = LatLng(48.8587782, 2.3474106)
+        val creteil = LatLng(48.7771486, 2.4530731)
+        mMap.addMarker(MarkerOptions().position(chatelet).title("Chatelet"))
+        mMap.addMarker(MarkerOptions().position(creteil).title("Creteil"))
         // Declare polyline object and set up color and width
         val options = PolylineOptions()
         options.color(Color.RED)
         options.width(5f)
         // build URL to call API
-        val url = getURL(sydney, opera)
+        val url = getURL(chatelet, creteil)
         lifecycleScope.launch(Dispatchers.IO){
             val apiKey = getString(R.string.google_maps_key)
-            val result = retrieveData(url+"&key=AIzaSyCrGLvUa3Im7LiMSf4fnX46lu2_yH8R20A")
+            val waypoints = arrayListOf<String>()
+            waypoints.addAll(
+                (CollectionUtils.listOf(
+                    "Picpus",
+                    "Canton de Vincennes",
+                    "Nogent-sur-Marne"
+                ))
+            )
+            val result = retrieveData(
+                url + "&key=AIzaSyCrGLvUa3Im7LiMSf4fnX46lu2_yH8R20A" + handleWayPoints(
+                    waypointsPlaces = waypoints
+                )
+            )
 
             // When API call is done, create parser and convert into JsonObjec
             val parser: Parser = Parser()
@@ -67,31 +74,34 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             // For every element in the JsonArray, decode the polyline string and pass all points to a List
             val polypts = points.flatMap { decodePoly(it.obj("polyline")?.string("points")!!)  }
             // Add  points to polyline and bounds
-            options.add(sydney)
-            LatLongB.include(sydney)
+            options.add(chatelet)
+            LatLongB.include(chatelet)
             for (point in polypts)  {
                 options.add(point)
                 LatLongB.include(point)
             }
-            options.add(opera)
-            LatLongB.include(opera)
+            options.add(creteil)
+            LatLongB.include(creteil)
             // build bounds
             val bounds = LatLongB.build()
             // add polyline to the map
             withContext(Dispatchers.Main) {
                  mMap.addPolyline(options)
                 // show map with route centered
-                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+                val width = resources.displayMetrics.widthPixels
+                val height = resources.displayMetrics.heightPixels
+                val padding = (width * 0.12).toInt()
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds,width,height, padding))
             }
         }
 
 
     }
-    fun retrieveData(url:String):String{
+    fun retrieveData(url: String):String{
         val res = URL(url).readText();
         return res;
     }
-    private fun getURL(from : LatLng, to : LatLng) : String {
+    private fun getURL(from: LatLng, to: LatLng) : String {
         val origin = "origin=" + from.latitude + "," + from.longitude
         val dest = "destination=" + to.latitude + "," + to.longitude
         val sensor = "sensor=false"
@@ -132,11 +142,32 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
             lng += dlng
 
-            val p = LatLng(lat.toDouble() / 1E5,
-                lng.toDouble() / 1E5)
+            val p = LatLng(
+                lat.toDouble() / 1E5,
+                lng.toDouble() / 1E5
+            )
             poly.add(p)
         }
 
         return poly
+    }
+    private fun handleWayPoints(waypointsPlaces: ArrayList<String>): String {
+        var wayPoints = ""
+        val wayPointsStringList = arrayListOf<String>()
+        if(waypointsPlaces.isNotEmpty()){
+            wayPointsStringList.addAll(waypointsPlaces)
+        }
+        if(wayPointsStringList.isNotEmpty()){
+            wayPoints += "&waypoints="
+        }
+        wayPointsStringList.forEachIndexed { index, s ->
+            wayPoints += if(index == wayPointsStringList.lastIndex){
+                s
+            }else{
+                "$s|"
+            }
+        }
+
+        return wayPoints
     }
 }
