@@ -1,9 +1,8 @@
 package com.example.myapplication
 
 import com.google.android.gms.common.util.CollectionUtils.listOf
-import org.junit.Test
-
 import org.junit.Assert.*
+import org.junit.Test
 import java.util.*
 
 /**
