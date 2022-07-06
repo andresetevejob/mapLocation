@@ -20,6 +20,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnPolyli
     private lateinit var polyLine1 : Polyline
     private lateinit var polyLine2 : Polyline
     private lateinit var polyLine3 : Polyline
+    private lateinit var polyLines:Array<Polyline>
+    private val COLOR_DARK_GREEN_ARGB = -0xc771c4
+    private val COLOR_DARK_ORANGE_ARGB = -0xa80e9
     val TAG = "MainActivity"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,24 +44,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnPolyli
         // Add markers
         val chatelet = LatLng(48.8587782, 2.3474106)
         val creteil = LatLng(48.7771486, 2.4530731)
+        val gareLyon = LatLng(48.8448057,2.3734794)
+        val reneArcos = LatLng(48.777885, 2.467415)
         mMap.addMarker(MarkerOptions().position(chatelet).title("Chatelet"))
         mMap.addMarker(MarkerOptions().position(creteil).title("Creteil"))
+        mMap.addMarker(MarkerOptions().position(gareLyon).title("Gare de Lyon"))
+        mMap.addMarker(MarkerOptions().position(reneArcos).title("Rene Arcos"))
         val chatGare = PolylineOptions()
-        chatGare.color(Color.RED)
-        chatGare.width(5f)
-        chatGare.add(LatLng(48.8587782,2.3474106))
-        chatGare.add(LatLng(48.8448057,2.3734794))
+        chatGare.width(15f)
+        chatGare.add(chatelet)
+        chatGare.add(gareLyon)
         LatLongB.include(LatLng(48.8587782,2.3474106))
         LatLongB.include(LatLng(48.8448057,2.3734794))
         val gareReneArcos = PolylineOptions()
-        gareReneArcos.color(Color.BLUE)
-        gareReneArcos.width(5f)
-        gareReneArcos.add(LatLng(48.8448057,2.3734794))
-        gareReneArcos.add(LatLng(48.777885, 2.467415))
+        gareReneArcos.width(15f)
+        gareReneArcos.add(gareLyon)
+        gareReneArcos.add(reneArcos)
         LatLongB.include(LatLng(48.777885, 2.467415))
         val reneArcosCreteil = PolylineOptions()
-        reneArcosCreteil.color(Color.YELLOW)
-        reneArcosCreteil.width(5f)
+        reneArcosCreteil.width(15f)
         reneArcosCreteil.add(LatLng(48.777885, 2.467415))
         reneArcosCreteil.add(creteil)
         LatLongB.include(creteil)
@@ -67,7 +71,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnPolyli
         polyLine1 = mMap.addPolyline(chatGare.clickable(true))
         polyLine2 = mMap.addPolyline(gareReneArcos.clickable(true))
         polyLine3 = mMap.addPolyline(reneArcosCreteil.clickable(true))
-
+        polyLine1.color = COLOR_DARK_GREEN_ARGB
+        polyLine2.color = COLOR_DARK_GREEN_ARGB
+        polyLine3.color = COLOR_DARK_GREEN_ARGB
+        polyLines =  arrayOf(polyLine1,polyLine2,polyLine3)
         // show map with route centered
         val width = resources.displayMetrics.widthPixels
         val height = resources.displayMetrics.heightPixels
@@ -112,7 +119,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnPolyli
                     try {
                         val data = String(message.payload, charset("UTF-8"))
                         Log.d(TAG,  "message receive :"+data)
-                        polyLine1.color = -0x1000000
+                        val rnds = (0..2).random()
+                        if(data.equals("TRAFFIC_PERTUBE")){
+                            polyLines[rnds].color = COLOR_DARK_ORANGE_ARGB
+                        }else{
+                            polyLines[rnds].color = COLOR_DARK_GREEN_ARGB
+                        }
+
                     } catch (e: Exception) {
                         // Give your callback on error here
                     }
@@ -127,9 +140,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnPolyli
 
     }
 
-    override fun onPolylineClick(p0: Polyline) {
-        Log.d(TAG,"Le traffic est pertubé")
-        Toast.makeText(this, "Le traffic est pertubé",
+    override fun onPolylineClick(polyLine: Polyline) {
+        var message = "Le trafic est normal"
+        if(polyLine.color==COLOR_DARK_ORANGE_ARGB){
+            message = "Le traffic est pertubé"
+        }
+        Toast.makeText(this, message,
                 Toast.LENGTH_SHORT).show()
 
     }
